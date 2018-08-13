@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Youth-18 Blog</title>
+    <description>从小白到大白</description>
+    <link>http://localhost:4000/</link>
+    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Mon, 13 Aug 2018 23:45:39 +0800</pubDate>
+    <lastBuildDate>Mon, 13 Aug 2018 23:45:39 +0800</lastBuildDate>
+    <generator>Jekyll v3.8.3</generator>
+    
+      <item>
+        <title>论文理解-SSD </title>
+        <description>&lt;p&gt;参考：https://blog.csdn.net/a8039974/article/details/77592395&lt;br /&gt;
+https://blog.csdn.net/u010167269/article/details/52563573&lt;/p&gt;
+&lt;h4 id=&quot;一论文所做出的贡献&quot;&gt;一、论文所做出的贡献&lt;/h4&gt;
+&lt;p&gt;1.速度比YOLO快，精确度比YOLO高，事实上，能跟Faster R-CNN相媲美。&lt;br /&gt;
+2.SSD的核心是使用应用于特征图的小的卷积滤波器来预测类别得分和default bounding boxes的offsets。&lt;br /&gt;
+3.为了高精度，我们从不同尺度的特征图上产生不同尺度的预测，并通过aspect ratio来分开预测。&lt;br /&gt;
+4.本文的这些设计，实现了简单的端对端训练，即使输入低分辨率的图像，也能保证高准确率。&lt;/p&gt;
+&lt;h4 id=&quot;二模型&quot;&gt;二、模型&lt;/h4&gt;
+&lt;p&gt;SSD基于一个前馈（feed-forward）卷积网络来产生固定大小的bounding boxes，并且对这些boxes中存在物体的可能性打分。然后进行非极大值抑制来确定最后的检测。SSD模型前边被称为基础网络（base network），此外，网络中还添加了辅助结构：&lt;br /&gt;
+&lt;strong&gt;Multi-scale feature maps for detection&lt;/strong&gt;&lt;br /&gt;
+在基础网络之后，添加了额外的卷积层，这些卷积层的尺寸逐渐减小，从而能够允许在不同尺寸下进行检测。&lt;br /&gt;
+&lt;img src=&quot;/blog_image/fig2.png&quot; alt=&quot;&quot; /&gt;
+&lt;strong&gt;Convolutional predictors for detection&lt;/strong&gt;&lt;br /&gt;
+每一个添加的特征层（或基础网络中的特征层）能够使用一系列卷积滤波器（convolutional filters）生成一系列固定大小的detection predictions。对于一个尺寸为m×n,通道数为p的特征层，用于预测detection的参数的基本单元是3×3×p的卷积核，要么生成类别得分，要么生成相对于default box的偏移。具体细节看Fig.2。&lt;br /&gt;
+&lt;img src=&quot;/blog_image/fig1.png&quot; alt=&quot;&quot; /&gt;
+&lt;strong&gt;Default boxes and aspect ratios&lt;/strong&gt; &lt;br /&gt;
+每一个特征图单元（feature map cell）上有一组具有不同aspect ratios的default bounding boxes。如Fig.1，一个cell就是一个格子，每个cell中有k个default boxes，对于每个default box，我们预测每一个类别的置信度（c1,c2,…cp）以及其与相关的ground truth box的offsets。所以对于每一个cell需要(c+4)k个filters,对于m×n的feature map共产生(c+4)kmn个输出。训练时，我们首先选出对图中猫狗最匹配的两个default boxes，将其作为正样本，其他的作为负样本，损失函数包括localization loss和confidence loss。&lt;/p&gt;
+&lt;h4 id=&quot;三训练&quot;&gt;三、训练&lt;/h4&gt;
+&lt;p&gt;在训练是，SSD与region proposal + pooling方法的区别是，SSD训练图像中的groundtruth boxes 需要赋予给一个输出的box。&lt;br /&gt;
+将训练图像中的groundtruth boxes与固定输出的boxes对应以后，就可以end-to-end的进行loss function的计算以及back-propagation的计算更新。&lt;br /&gt;
+&lt;strong&gt;Matching strategy&lt;/strong&gt;&lt;br /&gt;
+训练的时候我们需要确定哪个default box与groundtruth box相匹配。开始的时候，使用MultiBox中的最大jaccard overlap来匹配groundtruth box与default box，确保每个groundtruth box与一个default box对应。接下来又不同于Multibox，开始将剩余的（未匹配的）default box 与任意的groundtruth box配对，只要两者间的jaccard overlap 大于一个阈值(本文为0.5)。&lt;br /&gt;
+&lt;strong&gt;Training objective&lt;/strong&gt;&lt;br /&gt;
+SSD训练的目标函数源于MultiBox但是扩展成处理多目标类别。$x^p_{ij}={1,0}$表示第i个default box与类别p的第j个groundtruth box相匹配。根据上面的匹配策略，我们可以得到$\sum_ix^p_{ij}\geq1$,即对第j个groundtruth box，可能有多个default box与其匹配。&lt;br /&gt;
+总的目标损失函数是localization loss(loc)与confidence loss(conf)的加权和：&lt;br /&gt;
+&lt;script type=&quot;math/tex&quot;&gt;L(x,c,l,g)=\frac 1N(L_{conf}(x,c)+\alpha L_{loc}(x,l,g)&lt;/script&gt;&lt;br /&gt;
+其中：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;N是与groundtruth boxes匹配的default boxes的个数。&lt;/li&gt;
+  &lt;li&gt;localization loss(loc)是Fast R-CNN中的Smooth L1 loss,用于predicted box(l)和groundtruth box(g)的参数（即中心坐标位置，width，height）中，回归default boxes的中心坐标以及width、height。&lt;img src=&quot;/blog_image/t1.png&quot; alt=&quot;&quot; /&gt;&lt;/li&gt;
+  &lt;li&gt;confidence loss(conf)是Softmax Loss，输入为每一类的置信度c。&lt;/li&gt;
+  &lt;li&gt;$\alpha$为权重，设为1。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;Choosing scales and aspect ratios for default boxes&lt;/strong&gt;&lt;br /&gt;
+大部分CNN网络在越深的层，feature map的尺寸会越来越小，这样做不仅仅是为了减少计算与内存的需求，还有好处就是，最后提取的feature map有某种程度上的平移与尺度不变性。&lt;br /&gt;
+为了处理不同尺度的物体，一些文章将图像转换成不同尺度，将这些图像独立通过CNN网络处理，再将这些不同尺度的图像结果进行综合。&lt;br /&gt;
+其实，如果使用同一网络的、不同层的feature maps，也可以达到相同的效果，同时在所有物体尺度中共享参数。&lt;br /&gt;
+因此，本文使用lower feature maps、upper feature maps来predict detections。一般来说，一个CNN网络中不同的layers有着不同的感受野，这里的感受野指feature map上的一个节点对应输入图像尺寸的大小。&lt;br /&gt;
+在SSD中，default boxes不必要与每一层的感受野对应，本文中，feature map中特定的位置来负责图像中特定的区域，以及物体特定的尺寸。我们用m个feature maps来做predictions,每个feature map中default box的尺寸大小计算如下：&lt;br /&gt;
+&lt;script type=&quot;math/tex&quot;&gt;s_k = s_{min} + \frac{s_{max} - s_{min}}{m-1}(k-1), \ \ \ \ \ \  \ \ \ \ k \in [1, m]&lt;/script&gt;&lt;br /&gt;
+其中，m为feature maps的数量，$s_{min}$ 取值 0.2，$s_{max}$ 取值 0.95，意味着最低层的尺度是 0.2，最高层的尺度是 0.95，再用不同 aspect ratio 的 default boxes，用$a_r$来表示：$a_r={1,2,3,\frac 12,\frac 13}$，则每一个 default boxes 的 width、height 就可以计算出来：&lt;/p&gt;
+
+&lt;script type=&quot;math/tex; mode=display&quot;&gt;w^a_k=s_k \sqrt{a_r}\\
+h^a_k=s_k/\sqrt{a_r}&lt;/script&gt;
+
+&lt;p&gt;对于aspect ratio为1时，本文还增加了一个default box,这个box的scale是$s^{\prime}{k}=\sqrt{s_k s_{k+1}}$所以在每个feature map cell 上有6个default boxes。&lt;br /&gt;
+每一个default box的中心为:$(\frac {i+0.5}{|f_k|},\frac {j+0.5}{f_k})$，其中，$|f_k|$是第K个feature map的大小，同时，$i,j \in [0,\vert f_k \vert]$。&lt;br /&gt;
+&lt;strong&gt;Hard negative mining&lt;/strong&gt;&lt;br /&gt;
+在生成一系列的 predictions 之后，会产生很多个符合 ground truth box 的 predictions boxes，但同时，不符合 ground truth boxes 也很多，而且这个 negative boxes，远多于 positive boxes。这会造成 negative boxes、positive boxes 之间的不均衡。训练时难以收敛。&lt;br /&gt;
+因此，本文采取，先将每一个物体位置上对应 predictions（default boxes）是 negative 的 boxes 进行排序，按照 default boxes 的 confidence 的大小。 选择最高的几个，保证最后 negatives、positives 的比例在 3:1。&lt;br /&gt;
+本文通过实验发现，这样的比例可以更快的优化，训练也更稳定。&lt;br /&gt;
+&lt;strong&gt;Data augmentation&lt;/strong&gt;&lt;br /&gt;
+每一张训练图像，随机的进行如下几种选择：&lt;/p&gt;
+&lt;ul&gt;
+  &lt;li&gt;使用原始的图像&lt;/li&gt;
+  &lt;li&gt;采样一个 patch，与物体之间最小的 jaccard overlap 为：0.1，0.3，0.5，0.7 与 0.9&lt;/li&gt;
+  &lt;li&gt;随机的采样一个 patch
+采样的 patch 是原始图像大小比例是 [0.1，1]，aspect ratio 在 12 与 2 之间。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;当 groundtruth box 的 中心（center）在采样的 patch 中时，我们保留重叠部分。&lt;br /&gt;
+在这些采样步骤之后，每一个采样的 patch 被 resize 到固定的大小，并且以 0.5 的概率随机的 水平翻转（horizontally flipped）。&lt;/p&gt;
+
+&lt;h4 id=&quot;四有关问题&quot;&gt;四、有关问题&lt;/h4&gt;
+&lt;p&gt;1.SSD为什么对小物体检测不好？&lt;br /&gt;
+https://www.zhihu.com/question/49455386&lt;br /&gt;
+（1）SSD基于全卷机的网络检测，用不同的层检测大小不同的物体，小物体在浅层检测，大物体在深层检测。但是，浅层的feature map大，但是semantic不够，深层的semantic够了，但是feature map太小。要检测小物体，需要足够大的feature map来提供更加精细的特征和更加密集的采样，同时也需要足够的semantic meaning来与背景区分。可关注FPN/DSSD的做法。  （2）每个feature map上的pixel会对应几个anchor，然后网络对anchor进行训练，以此驱动对feature训练。对于小物体，其所对应的anchor比较少（gt overlap &amp;gt; 0.5的anchor），所以其feature难以训练。&lt;/p&gt;
+
+</description>
+        <pubDate>Sun, 12 Aug 2018 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3/2018/08/12/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3_SSD/</link>
+        <guid isPermaLink="true">http://localhost:4000/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3/2018/08/12/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3_SSD/</guid>
+        
+        <category>论文理解</category>
+        
+        
+        <category>论文理解</category>
+        
+      </item>
+    
+  </channel>
+</rss>
