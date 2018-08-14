@@ -1,4 +1,11 @@
-## YOLOv3使用文档  
+---
+layout:     post
+title:      "YOLOv3使用文档 "
+date:       2018-8-14
+author:     "Youth-18"
+categories: 论文实践
+tags:  论文实践
+---
 ### 一、YOLOv3的配置  
 参考：https://pjreddie.com/darknet/yolo/  
 ```
@@ -42,9 +49,9 @@ Main中是4个txt文件，其中test.txt是测试集，train.txt是训练集，v
 JPEGImages中是所有的训练图片。
 #### 2.生成YOLOv3使用的数据格式  
 YOLOv3使用的是.txt数据格式，.txt里面如下图：
-![](/home/rd301/文档/学习/深度学习/目标检测/YOLOv3_txt.png)  
+![](/blog_image/YOLOv3_txt.png)  
 将darknet/scripts/voc_label.py复制到data目录下，跟VOCdevkit同目录。
-修改里面的内容，参考我的[voc_label.py]()：
+修改里面的内容，参考我的[voc_label.py](https://github.com/Youth-18/tools/tree/master/YOLOv3)：
 ```python
 import xml.etree.ElementTree as ET
 import pickle
@@ -118,7 +125,7 @@ python voc_label.py
 ```
 ./darknet detector calc_anchors cfg/voc.data -num_of_clusters 9 -width 416 -height 416 -show 1  
 ```
-来聚类anchor,然后修改cfg/yolov3-train.cfg中的anchor，修改格式可参考我的[detector.c]()
+来聚类anchor,然后修改cfg/yolov3-train.cfg中的anchor，修改格式可参考我的[detector.c](https://github.com/Youth-18/tools/tree/master/YOLOv3)
 #### 1.下载预训练模型  
 ```
 wget https://pjreddie.com/media/files/darknet53.conv.74
@@ -236,7 +243,7 @@ N=1，具体代表什么不确定。
 1，预测的置信度。  
 C，类别数。  
 所以类别数为10的时候，1\*1\*[3\*(4+1+10)]=45  
-![](/home/rd301/文档/学习/深度学习/目标检测/YOLOv3_cfg.png)  
+![](/blog_image/YOLOv3_cfg.png)  
 #### 3.运行  
 单GPU  
 ```
@@ -256,7 +263,7 @@ C，类别数。
 ./darknet detector train cfg/coco.data cfg/yolov3.cfg backup/yolov3-loss train.backup -gpus 0,1,2,3
 ```    
 #### 4.输出参数分析  
-![](/home/rd301/文档/学习/深度学习/目标检测/YOLOv3_t.png)
+![](/blog_image/YOLOv3_t.png)
 Region xx:cfg文件中mask所在layer；  
 Avg IOU:当前迭代中，预测的box与groundtruth box的平均交并比；  
 Class：标注物体的分类准确率，越大越好，期望数值为1；  
@@ -278,128 +285,7 @@ Region 106 Avg IOU:
 ```
 ### 四、测试
 #### 1.loss曲线跟IOU曲线  
-可参考[curve_visualization.py]()
-```
-#coding=utf-8
-import os
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s %(levelname)s: %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-logger = logging.getLogger(__name__)
-
-class Yolov3LogVisualization:
-
-    def __init__(self,log_path,result_dir):
-
-        self.log_path = log_path
-        self.result_dir = result_dir
-
-    def extract_log(self, save_log_path, key_word):
-        with open(self.log_path, 'r') as f:
-            with open(save_log_path, 'w') as train_log:
-                next_skip = False
-                for line in f:
-                    if next_skip:
-                        next_skip = False
-                        continue
-                    # 去除多gpu的同步log
-                    if 'Syncing' in line:
-                        continue
-                    # 去除除零错误的log
-                    if 'nan' in line:
-                        continue
-                    if 'Saving weights to' in line:
-                        next_skip = True
-                        continue
-                    if key_word in line:
-                        train_log.write(line)
-        f.close()
-        train_log.close()
-
-    def parse_loss_log(self,log_path, line_num=2000):
-        result = pd.read_csv(log_path, skiprows=[x for x in range(line_num) if ((x % 10 != 9) | (x < 1000))],error_bad_lines=False, names=['loss', 'avg', 'rate', 'seconds', 'images'])
-        result['loss'] = result['loss'].str.split(' ').str.get(1)
-        result['avg'] = result['avg'].str.split(' ').str.get(1)
-        result['rate'] = result['rate'].str.split(' ').str.get(1)
-        result['seconds'] = result['seconds'].str.split(' ').str.get(1)
-        result['images'] = result['images'].str.split(' ').str.get(1)
-
-        result['loss'] = pd.to_numeric(result['loss'])
-        result['avg'] = pd.to_numeric(result['avg'])
-        result['rate'] = pd.to_numeric(result['rate'])
-        result['seconds'] = pd.to_numeric(result['seconds'])
-        result['images'] = pd.to_numeric(result['images'])
-        return result
-
-    def gene_loss_pic(self, pd_loss):
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-        ax.plot(pd_loss['avg'].values, label='avg_loss')
-        ax.legend(loc='best')
-        ax.set_title('The loss curves')
-        ax.set_xlabel('batches')
-        fig.savefig(self.result_dir + '/avg_loss')
-        logger.info('save iou loss done')
-
-    def loss_pic(self):
-        train_log_loss_path = os.path.join(self.result_dir, 'train_log_loss.txt')
-        self.extract_log(train_log_loss_path, 'images')
-        pd_loss = self.parse_loss_log(train_log_loss_path)
-        self.gene_loss_pic(pd_loss)
-
-
-    def parse_iou_log(self,log_path, line_num=2000): 
-        result = pd.read_csv(log_path, skiprows=[x for x in range(line_num) if (x % 10 == 0 or x % 10 == 9)],error_bad_lines=False,names=['Region Avg IOU', 'Class', 'Obj', 'No Obj', 'Avg Recall', 'count'])
-        result['Region Avg IOU'] = result['Region Avg IOU'].str.split(': ').str.get(1)
-        result['Class'] = result['Class'].str.split(': ').str.get(1)
-        result['Obj'] = result['Obj'].str.split(': ').str.get(1)
-        result['No Obj'] = result['No Obj'].str.split(': ').str.get(1)
-        result['Avg Recall'] = result['Avg Recall'].str.split(': ').str.get(1)
-        result['count'] = result['count'].str.split(': ').str.get(1)
-
-        result['Region Avg IOU'] = pd.to_numeric(result['Region Avg IOU'])
-        result['Class'] = pd.to_numeric(result['Class'])
-        result['Obj'] = pd.to_numeric(result['Obj'])
-        result['No Obj'] = pd.to_numeric(result['No Obj'])
-        result['Avg Recall'] = pd.to_numeric(result['Avg Recall'])
-        result['count'] = pd.to_numeric(result['count'])
-        return result
-
-    def gene_iou_pic(self, pd_loss):
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-        ax.plot(pd_loss['Region Avg IOU'].values, label='Region Avg IOU')
-        # ax.plot(result['Class'].values,label='Class')
-        # ax.plot(result['Obj'].values,label='Obj')
-        # ax.plot(result['No Obj'].values,label='No Obj')
-        # ax.plot(result['Avg Recall'].values,label='Avg Recall')
-        # ax.plot(result['count'].values,label='count')
-        ax.legend(loc='best')
-        ax.set_title('The Region Avg IOU curves')
-        ax.set_xlabel('batches')
-        fig.savefig(self.result_dir + '/region_avg_iou')
-        logger.info('save iou pic done')
-
-    def iou_pic(self):
-        train_log_loss_path = os.path.join(self.result_dir, 'train_log_iou.txt')
-        self.extract_log(train_log_loss_path, 'IOU')
-        pd_loss = self.parse_iou_log(train_log_loss_path)
-        self.gene_iou_pic(pd_loss)
-
-
-if __name__ == '__main__':
-    log_path = '/Users/songhongwei/Downloads/nohup.log'                                 # 输出的log/txt路径
-    result_dir = '/Users/songhongwei/PycharmProjects/py2project/hand/data'              # 结果储存路径
-    logVis = Yolov3LogVisualization(log_path,result_dir)
-    logVis.loss_pic()
-    logVis.iou_pic()
-```
+可参考[curve_visualization.py](https://github.com/Youth-18/tools/tree/master/YOLOv3)
 #### 2.计算recall
 ```
 ./darknet detector recall cfg/voc.data cfg/yolov3-test.cfg results/yolov3-final.weights
@@ -409,207 +295,7 @@ if __name__ == '__main__':
 ```
 ./darknet detector valid cfg/voc.data cfg/yolov3-test.cfg results/yolov3-final.weights -out person.txt -gpus 0,1 -thresh .5
 ```
-下载py-faster-rcnn下的voc_eval.py
-```python
-# --------------------------------------------------------
-# Fast/er R-CNN
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Bharath Hariharan
-# --------------------------------------------------------
-
-import xml.etree.ElementTree as ET
-import os
-import cPickle
-import numpy as np
-
-def parse_rec(filename):
-    """ Parse a PASCAL VOC xml file """
-    tree = ET.parse(filename)
-    objects = []
-    for obj in tree.findall('object'):
-        obj_struct = {}
-        obj_struct['name'] = obj.find('name').text
-        obj_struct['pose'] = obj.find('pose').text
-        obj_struct['truncated'] = int(obj.find('truncated').text)
-        obj_struct['difficult'] = int(obj.find('difficult').text)
-        bbox = obj.find('bndbox')
-        obj_struct['bbox'] = [int(bbox.find('xmin').text),
-                              int(bbox.find('ymin').text),
-                              int(bbox.find('xmax').text),
-                              int(bbox.find('ymax').text)]
-        objects.append(obj_struct)
-
-    return objects
-
-def voc_ap(rec, prec, use_07_metric=False):
-    """ ap = voc_ap(rec, prec, [use_07_metric])
-    Compute VOC AP given precision and recall.
-    If use_07_metric is true, uses the
-    VOC 07 11 point method (default:False).
-    """
-    if use_07_metric:
-        # 11 point metric
-        ap = 0.
-        for t in np.arange(0., 1.1, 0.1):
-            if np.sum(rec >= t) == 0:
-                p = 0
-            else:
-                p = np.max(prec[rec >= t])
-            ap = ap + p / 11.
-    else:
-        # correct AP calculation
-        # first append sentinel values at the end
-        mrec = np.concatenate(([0.], rec, [1.]))
-        mpre = np.concatenate(([0.], prec, [0.]))
-
-        # compute the precision envelope
-        for i in range(mpre.size - 1, 0, -1):
-            mpre[i - 1] = np.maximum(mpre[i - 1], mpre[i])
-
-        # to calculate area under PR curve, look for points
-        # where X axis (recall) changes value
-        i = np.where(mrec[1:] != mrec[:-1])[0]
-
-        # and sum (\Delta recall) * prec
-        ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
-    return ap
-
-def voc_eval(detpath,
-             annopath,
-             imagesetfile,
-             classname,
-             cachedir,
-             ovthresh=0.5,
-             use_07_metric=False):
-    """rec, prec, ap = voc_eval(detpath,
-                                annopath,
-                                imagesetfile,
-                                classname,
-                                [ovthresh],
-                                [use_07_metric])
-    Top level function that does the PASCAL VOC evaluation.
-    detpath: Path to detections
-        detpath.format(classname) should produce the detection results file.
-    annopath: Path to annotations
-        annopath.format(imagename) should be the xml annotations file.
-    imagesetfile: Text file containing the list of images, one image per line.
-    classname: Category name (duh)
-    cachedir: Directory for caching the annotations
-    [ovthresh]: Overlap threshold (default = 0.5)
-    [use_07_metric]: Whether to use VOC07's 11 point AP computation
-        (default False)
-    """
-    # assumes detections are in detpath.format(classname)
-    # assumes annotations are in annopath.format(imagename)
-    # assumes imagesetfile is a text file with each line an image name
-    # cachedir caches the annotations in a pickle file
-
-    # first load gt
-    if not os.path.isdir(cachedir):
-        os.mkdir(cachedir)
-    cachefile = os.path.join(cachedir, 'annots.pkl')
-    # read list of images
-    with open(imagesetfile, 'r') as f:
-        lines = f.readlines()
-    imagenames = [x.strip() for x in lines]
-
-    if not os.path.isfile(cachefile):
-        # load annots
-        recs = {}
-        for i, imagename in enumerate(imagenames):
-            recs[imagename] = parse_rec(annopath.format(imagename))
-            if i % 100 == 0:
-                print 'Reading annotation for {:d}/{:d}'.format(
-                    i + 1, len(imagenames))
-        # save
-        print 'Saving cached annotations to {:s}'.format(cachefile)
-        with open(cachefile, 'w') as f:
-            cPickle.dump(recs, f)
-    else:
-        # load
-        with open(cachefile, 'r') as f:
-            recs = cPickle.load(f)
-
-    # extract gt objects for this class
-    class_recs = {}
-    npos = 0
-    for imagename in imagenames:
-        R = [obj for obj in recs[imagename] if obj['name'] == classname]
-        bbox = np.array([x['bbox'] for x in R])
-        difficult = np.array([x['difficult'] for x in R]).astype(np.bool)
-        det = [False] * len(R)
-        npos = npos + sum(~difficult)
-        class_recs[imagename] = {'bbox': bbox,
-                                 'difficult': difficult,
-                                 'det': det}
-
-    # read dets
-    detfile = detpath.format(classname)
-    with open(detfile, 'r') as f:
-        lines = f.readlines()
-
-    splitlines = [x.strip().split(' ') for x in lines]
-    image_ids = [x[0] for x in splitlines]
-    confidence = np.array([float(x[1]) for x in splitlines])
-    BB = np.array([[float(z) for z in x[2:]] for x in splitlines])
-
-    # sort by confidence
-    sorted_ind = np.argsort(-confidence)
-    sorted_scores = np.sort(-confidence)
-    BB = BB[sorted_ind, :]
-    image_ids = [image_ids[x] for x in sorted_ind]
-
-    # go down dets and mark TPs and FPs
-    nd = len(image_ids)
-    tp = np.zeros(nd)
-    fp = np.zeros(nd)
-    for d in range(nd):
-        R = class_recs[image_ids[d]]
-        bb = BB[d, :].astype(float)
-        ovmax = -np.inf
-        BBGT = R['bbox'].astype(float)
-
-        if BBGT.size > 0:
-            # compute overlaps
-            # intersection
-            ixmin = np.maximum(BBGT[:, 0], bb[0])
-            iymin = np.maximum(BBGT[:, 1], bb[1])
-            ixmax = np.minimum(BBGT[:, 2], bb[2])
-            iymax = np.minimum(BBGT[:, 3], bb[3])
-            iw = np.maximum(ixmax - ixmin + 1., 0.)
-            ih = np.maximum(iymax - iymin + 1., 0.)
-            inters = iw * ih
-
-            # union
-            uni = ((bb[2] - bb[0] + 1.) * (bb[3] - bb[1] + 1.) +
-                   (BBGT[:, 2] - BBGT[:, 0] + 1.) *
-                   (BBGT[:, 3] - BBGT[:, 1] + 1.) - inters)
-
-            overlaps = inters / uni
-            ovmax = np.max(overlaps)
-            jmax = np.argmax(overlaps)
-
-        if ovmax > ovthresh:
-            if not R['difficult'][jmax]:
-                if not R['det'][jmax]:
-                    tp[d] = 1.
-                    R['det'][jmax] = 1
-                else:
-                    fp[d] = 1.
-        else:
-            fp[d] = 1.
-
-    # compute precision recall
-    fp = np.cumsum(fp)
-    tp = np.cumsum(tp)
-    rec = tp / float(npos)
-    # avoid divide by zero in case the first detection matches a difficult
-    # ground truth
-    prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
-    ap = voc_ap(rec, prec, use_07_metric)
-
-    return rec, prec, ap
-```
+下载py-faster-rcnn下的voc_eval.py，可使用我的[voc_eval.py](https://github.com/Youth-18/tools/tree/master/YOLOv3)    
 新建compute_mAP.py
 ```python
 from voc_eval import voc_eval
