@@ -3,10 +3,10 @@
   <channel>
     <title>Youth-18 Blog</title>
     <description>从小白到大白</description>
-    <link>http://localhost:4000/</link>
-    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Tue, 14 Aug 2018 21:30:47 +0800</pubDate>
-    <lastBuildDate>Tue, 14 Aug 2018 21:30:47 +0800</lastBuildDate>
+    <link>/</link>
+    <atom:link href="/feed.xml" rel="self" type="application/rss+xml" />
+    <pubDate>Wed, 15 Aug 2018 22:28:29 +0800</pubDate>
+    <lastBuildDate>Wed, 15 Aug 2018 22:28:29 +0800</lastBuildDate>
     <generator>Jekyll v3.8.3</generator>
     
       <item>
@@ -109,10 +109,11 @@ JPEGImages中是所有的训练图片。&lt;/p&gt;
     &lt;span class=&quot;n&quot;&gt;list_file&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;close&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
 
 &lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cat train.txt val.txt &amp;gt; train1.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;                                                            &lt;span class=&quot;c&quot;&gt;# 将文件合并为一个文件，最好文件名都不相同，生成后再把train1.txt改回train.txt&lt;/span&gt;
-&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cat train.txt val.txt test.txt &amp;gt; train.all.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;                                                &lt;span class=&quot;c&quot;&gt;# &lt;/span&gt;
-
+&lt;span class=&quot;n&quot;&gt;os&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;system&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&quot;cat train.txt val.txt test.txt &amp;gt; train.all.txt&quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                                                                                                           &lt;span class=&quot;c&quot;&gt;#   &lt;/span&gt;
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;生成YOLOv3训练所用数据&lt;/p&gt;
+
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;python voc_label.py 
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;h3 id=&quot;三训练&quot;&gt;三、训练&lt;/h3&gt;
@@ -134,8 +135,8 @@ names = /home/data/datahead/headdata.names   #自己建的.name，里面是具�
 backup = /home/darknet/backup                #存储权重的文件夹
 
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-&lt;p&gt;（2）修改.name文件&lt;br /&gt;
-一行放一个类别名&lt;br /&gt;
+&lt;p&gt;（2）修改.names文件&lt;br /&gt;
+没有这个文件可以自己新建一个，一行放一个类别名&lt;br /&gt;
 （3）修改cfg/yolov3-voc.cfg
 &amp;lt;font color=red&amp;gt;这里可以将yolov3-voc.cfg备份成两个文件，yolov3-train.cfg与yolov3-test.cfg,然后训练文件中只开启train,测试文件中只开启test，且将batch=1，subdivisions=1&amp;lt;/font&amp;gt;&lt;/p&gt;
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;[net]
@@ -156,10 +157,10 @@ exposure = 1.5       ### 曝光度
 hue=.1               ### 色调
 learning_rate=0.001  ### 学习率 
 burn_in=1000         ### 学习率控制的参数
-max_batches = 50200  ### 迭代次数                                          
+max_batches = 50200  ### 迭代次数
 policy=steps         ### 学习率策略 
 steps=40000,45000    ### 学习率变动步长 
-scales=.1,.1         ### 学习率变动因子  
+scales=.1,.1         ### 学习率变动因子
 
 
 
@@ -276,8 +277,8 @@ Region 106 Avg IOU:
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;./darknet detector recall cfg/voc.data cfg/yolov3-test.cfg results/yolov3-final.weights
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;h4 id=&quot;3计算map&quot;&gt;3.计算mAP&lt;/h4&gt;
-&lt;p&gt;首先将检测结果保存到result/person.txt。&amp;lt;font color=red&amp;gt;求哪一类的ap，就以类名命名。&amp;lt;/font&amp;gt;&lt;/p&gt;
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;./darknet detector valid cfg/voc.data cfg/yolov3-test.cfg results/yolov3-final.weights -out person.txt -gpus 0,1 -thresh .5
+&lt;p&gt;首先将检测结果保存到result/person.txt。&lt;strong&gt;当你只有一类，比如.names中你的类别是person，它会以person.txt命名&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;./darknet detector valid cfg/voc.data cfg/yolov3-test.cfg results/yolov3-final.weights -out &quot;&quot; -gpus 0,1 -thresh .5
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 &lt;p&gt;下载py-faster-rcnn下的voc_eval.py，可使用我的&lt;a href=&quot;https://github.com/Youth-18/tools/tree/master/YOLOv3&quot;&gt;voc_eval.py&lt;/a&gt;  &lt;br /&gt;
 新建compute_mAP.py&lt;/p&gt;
@@ -288,13 +289,13 @@ Region 106 Avg IOU:
 &lt;p&gt;第一个参数是第一步生成的检测文件（{}.txt这个格式不要改,跟你第四个参数有关，为person.txt）；&lt;br /&gt;
 第二个参数是你数据集的标注文件（{}.xml这个格式不要改,跟你第五个参数有关，代表所有xml）；&lt;br /&gt;
 第三个参数是Main中的test.txt文件；&lt;br /&gt;
-第四个参数是第一步生成的文件的名字&amp;lt;font color=red&amp;gt;以自己的class命名，比如求person的ap那就是person.txt&amp;lt;/font&amp;gt;；&lt;br /&gt;
+第四个参数是第一步生成的文件的名字&lt;strong&gt;以自己的class命名，比如求person的ap那就是person.txt&lt;/strong&gt;；&lt;br /&gt;
 第五个参数是.，代表目录文件下所有文件。&lt;br /&gt;
 注：重复测试时，请删除./darknet/annots.pkl文件，执行python compute_mAP.py，返回的最后一个值就是AP。&lt;/p&gt;
 </description>
         <pubDate>Tue, 14 Aug 2018 00:00:00 +0800</pubDate>
-        <link>http://localhost:4000/%E8%AE%BA%E6%96%87%E5%AE%9E%E8%B7%B5/2018/08/14/YOLOv3%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3/</link>
-        <guid isPermaLink="true">http://localhost:4000/%E8%AE%BA%E6%96%87%E5%AE%9E%E8%B7%B5/2018/08/14/YOLOv3%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3/</guid>
+        <link>/%E8%AE%BA%E6%96%87%E5%AE%9E%E8%B7%B5/2018/08/14/YOLOv3%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3/</link>
+        <guid isPermaLink="true">/%E8%AE%BA%E6%96%87%E5%AE%9E%E8%B7%B5/2018/08/14/YOLOv3%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3/</guid>
         
         <category>论文实践</category>
         
@@ -376,8 +377,8 @@ https://www.zhihu.com/question/49455386&lt;br /&gt;
 
 </description>
         <pubDate>Sun, 12 Aug 2018 00:00:00 +0800</pubDate>
-        <link>http://localhost:4000/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3/2018/08/12/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3_SSD/</link>
-        <guid isPermaLink="true">http://localhost:4000/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3/2018/08/12/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3_SSD/</guid>
+        <link>/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3/2018/08/12/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3_SSD/</link>
+        <guid isPermaLink="true">/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3/2018/08/12/%E8%AE%BA%E6%96%87%E7%90%86%E8%A7%A3_SSD/</guid>
         
         <category>论文理解</category>
         
